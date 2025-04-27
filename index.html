@@ -2,6 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>予約カレンダー</title>
   <style>
     body { font-family: sans-serif; padding: 20px; }
@@ -15,19 +16,39 @@
     .admin-panel { display: none; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
     .notice { font-size: 0.9em; color: #666; margin-top: 10px; }
     .cancel-btn { margin-left: 10px; color: red; cursor: pointer; }
+
+    @media (max-width: 600px) {
+      table, th, td {
+        font-size: 12px;
+        padding: 5px;
+      }
+
+      .form-container input,
+      .admin-toggle input {
+        width: 100%;
+        font-size: 14px;
+      }
+
+      .admin-toggle, .admin-panel, button {
+        font-size: 14px;
+      }
+
+      button {
+        padding: 8px 12px;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>予約カレンダー</h1>
 
-  <!-- 予約手順の説明 -->
   <div id="reservationInstructions">
     <h2>予約の手順</h2>
     <ol>
-      <li><strong> カレンダーで予約したい日付を選択してください。</strong> 青の「〇」表示のある日が予約可能です。</li>
-      <li><strong> 予約フォームにお名前、電話番号、メールアドレスを入力してください。</strong> 必須項目です。</li>
-      <li><strong> 「予約を確定する」ボタンをクリックして、予約を送信してください。</strong> 予約が仮確定されます。</li>
-      <li><strong> 予約の確定については、担当者からメールまたはお電話でご連絡いたします。</strong></li>
+      <li><strong>1. カレンダーで予約したい日付を選択してください。</strong></li>
+      <li><strong>2. フォームにお名前、電話番号、メールアドレスを入力してください。</strong></li>
+      <li><strong>3. 「予約を確定する」ボタンをクリックしてください。</strong></li>
+      <li><strong>4. 後日、予約確定のご連絡をいたします。</strong></li>
     </ol>
   </div>
 
@@ -131,12 +152,31 @@
         return;
       }
 
-      reservedDates.push(selectedDate);
-      if (!reservations[selectedDate]) reservations[selectedDate] = [];
-      reservations[selectedDate].push({ name, phone, email });
+      const payload = {
+        date: selectedDate,
+        name: name,
+        phone: phone,
+        email: email
+      };
 
-      alert(`${selectedDate} に予約が完了しました。\n名前: ${name}\n電話: ${phone}\nメール: ${email}`);
-      updateCalendar();
+      fetch("https://script.google.com/macros/s/AKfycbyva4bf6Db--dMLFO94RnZGNw7eH7U-VZRWlcF90dj6BrAAK9XytPBduBDEBjo_IQLE/exec", {
+        method: "POST",
+        body: JSON.stringify(payload),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(response => response.text())
+      .then(data => {
+        alert("予約が送信されました！");
+        reservedDates.push(selectedDate);
+        if (!reservations[selectedDate]) reservations[selectedDate] = [];
+        reservations[selectedDate].push(payload);
+        updateCalendar();
+        document.getElementById("reservationForm").style.display = "none";
+      })
+      .catch(error => {
+        console.error("エラー:", error);
+        alert("予約の送信に失敗しました。");
+      });
     }
 
     function toggleAdminMode() {
