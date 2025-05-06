@@ -9,13 +9,12 @@
     table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
     th, td { border: 1px solid #ccc; text-align: center; padding: 10px; }
     .clickable { cursor: pointer; color: blue; }
-    .reserved { color: red; }
+    .reserved { color: red; pointer-events: none; }
     .form-container { display: none; margin-bottom: 20px; }
     .form-container input { display: block; margin: 5px 0; }
     .admin-toggle { margin-bottom: 20px; }
     .admin-panel { display: none; border: 1px solid #ccc; padding: 10px; margin-bottom: 20px; }
     .notice { font-size: 0.9em; color: #666; margin-top: 10px; }
-    .cancel-btn { margin-left: 10px; color: red; cursor: pointer; }
     @media (max-width: 600px) {
       table, th, td { font-size: 12px; padding: 5px; }
       .form-container input, .admin-toggle input { width: 100%; font-size: 14px; }
@@ -26,7 +25,6 @@
 </head>
 <body>
   <h1>予約カレンダー</h1>
-
   <div id="reservationInstructions">
     <h2>予約の手順</h2>
     <ol>
@@ -65,151 +63,138 @@
     <p class="notice">※こちらの予約は仮予約となります。予約の確定につきましては登録いただいたメールアドレスもしくは電話番号宛に連絡をいたします。</p>
   </div>
 
-<script>
-  const apiUrl = "https://script.google.com/macros/s/AKfycbzvbBhNLLoUeFlF8DFj-Dv43jakC3nSiKlZSM3NjqoTyLK-H6iiArR4pldeek3KY-t0/exec";
-  let reservedDates = [];
-  let reservations = [];
-  let selectedDate = null;
-  let adminMode = false;
-  const adminPassword = "1135";
+  <script>
+    const apiUrl = "https://script.google.com/macros/s/AKfycbzvbBhNLLoUeFlF8DFj-Dv43jakC3nSiKlZSM3NjqoTyLK-H6iiArR4pldeek3KY-t0/exec";
+    let reservedDates = [];
+    let reservations = [];
+    let selectedDate = null;
+    let adminMode = false;
+    const adminPassword = "1135";
 
-  async function fetchReservations() {
-    try {
-      const response = await fetch(apiUrl);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
+    async function fetchReservations() {
+      try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+        reservations = data;
+        reservedDates = data.map(item => item.date);
+      } catch (error) {
+        console.error("予約情報の取得に失敗しました:", error);
       }
-      const data = await response.json();
-      reservations = data;
-      reservedDates = data.map(item => item.date);
-    } catch (error) {
-      console.error('予約情報の取得に失敗しました:', error);
-      throw error;
-    }
-  }
-
-  function formatDate(date) {
-    const offset = date.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(date - offset).toISOString();
-    return localISOTime.split('T')[0];
-  }
-
-  async function generateCalendar(year, month) {
-    await fetchReservations();
-    const table = document.getElementById("calendar");
-    table.innerHTML = "";
-    const date = new Date(year, month - 1, 1);
-    const daysInMonth = new Date(year, month, 0).getDate();
-
-    let row = table.insertRow();
-    for (let i = 0; i < date.getDay(); i++) {
-      row.insertCell();
     }
 
-    for (let i = 1; i <= daysInMonth; i++) {
-      if (row.cells.length >= 7) {
-        row = table.insertRow();
-      }
-      const cell = row.insertCell();
-      const currentDate = new Date(year, month - 1, i);
-      const formatted = formatDate(currentDate);
+    function formatDate(date) {
+      const offset = date.getTimezoneOffset() * 60000;
+      return new Date(date.getTime() - offset).toISOString().split('T')[0];
+    }
 
-      if (reservedDates.includes(formatted)) {
-        cell.innerHTML = `${i}日<br><span class="reserved">×</span>`;
-        cell.classList.add("reserved-cell");
-      } else {
-        cell.innerHTML = `${i}日<br><span class="clickable">〇</span>`;
-        if (!adminMode) {
+    async function generateCalendar(year, month) {
+      await fetchReservations();
+      const table = document.getElementById("calendar");
+      table.innerHTML = "";
+      const date = new Date(year, month - 1, 1);
+      const daysInMonth = new Date(year, month, 0).getDate();
+
+      let row = table.insertRow();
+      for (let i = 1; i <= daysInMonth; i++) {
+        const currentDate = new Date(year, month - 1, i);
+        const formatted = formatDate(currentDate);
+        const cell = row.insertCell();
+
+        if (reservedDates.includes(formatted)) {
+          cell.innerHTML = `${i}日<br><span class="reserved">×</span>`;
+        } else {
+          cell.innerHTML = `${i}日<br><span class="clickable">〇</span>`;
           cell.onclick = () => {
             selectedDate = formatted;
             document.getElementById("reservationForm").style.display = "block";
             document.getElementById("selectedDateDisplay").innerText = `選択した日付: ${formatted}`;
           };
         }
+
+        if ((i + date.getDay()) % 7 === 0) {
+          row = table.insertRow();
+        }
+      }
+
+      if (adminMode) updateReservationList();
+    }
+
+    function updateCalendar() {
+      const year = parseInt(document.getElementById("year").value);
+      const month = parseInt(document.getElementById("month").value);
+      document.getElementById("reservationForm").style.display = "none";
+      generateCalendar(year, month);
+    }
+
+    async function submitReservation() {
+      const name = document.getElementById("name").value.trim();
+      const phone = document.getElementById("phone").value.trim();
+      const email = document.getElementById("email").value.trim();
+
+      if (!name || !phone || !email) {
+        alert("全ての項目を入力してください。\n");
+        return;
+      }
+
+      try {
+        await fetch(apiUrl, {
+          method: "POST",
+          body: JSON.stringify({ date: selectedDate, name, phone, email }),
+          headers: { "Content-Type": "application/json" }
+        });
+
+        alert("予約完了しました！");
+        document.getElementById("reservationForm").style.display = "none";
+        generateCalendar(parseInt(document.getElementById("year").value), parseInt(document.getElementById("month").value));
+      } catch (error) {
+        alert("予約に失敗しました。もう一度試してください。");
       }
     }
 
-    if (adminMode) {
-      updateReservationList();
-    }
-  }
-
-  function updateCalendar() {
-    const year = parseInt(document.getElementById("year").value);
-    const month = parseInt(document.getElementById("month").value);
-    document.getElementById("reservationForm").style.display = "none";
-    generateCalendar(year, month);
-  }
-
-  async function submitReservation() {
-    const name = document.getElementById("name").value.trim();
-    const phone = document.getElementById("phone").value.trim();
-    const email = document.getElementById("email").value.trim();
-
-    if (!name || !phone || !email) {
-      alert("全ての項目を入力してください。");
-      return;
+    function toggleAdminMode() {
+      const inputPass = document.getElementById("adminPass").value;
+      if (inputPass === adminPassword) {
+        adminMode = !adminMode;
+        document.getElementById("adminStatus").innerText = adminMode ? "現在: 管理モード" : "現在: 通常モード";
+        document.getElementById("adminPanel").style.display = adminMode ? "block" : "none";
+        updateCalendar();
+      } else {
+        alert("パスワードが間違っています。管理モードに入れません。");
+      }
     }
 
-    try {
-      await fetch(apiUrl, {
-        method: "POST",
-        body: JSON.stringify({ date: selectedDate, name, phone, email }),
-        headers: { "Content-Type": "application/json" }
+    function updateReservationList() {
+      const list = document.getElementById("reservationList");
+      list.innerHTML = "";
+      reservations.forEach(res => {
+        const item = document.createElement("li");
+        item.textContent = `${res.date} - ${res.name}（${res.phone}, ${res.email}）`;
+        list.appendChild(item);
       });
-      alert("予約完了しました！");
-      document.getElementById("reservationForm").style.display = "none";
-      generateCalendar(parseInt(document.getElementById("year").value), parseInt(document.getElementById("month").value));
-    } catch (error) {
-      console.error('予約送信に失敗しました:', error);
-      alert("予約に失敗しました。\n再度お試しください。");
     }
-  }
 
-  function toggleAdminMode() {
-    const inputPass = document.getElementById("adminPass").value;
-    if (inputPass === adminPassword) {
-      adminMode = !adminMode;
-      document.getElementById("adminStatus").innerText = adminMode ? "現在: 管理モード" : "現在: 通常モード";
-      document.getElementById("adminPanel").style.display = adminMode ? "block" : "none";
-      updateCalendar();
-    } else {
-      alert("パスワードが間違っています。\n管理モードに入れません。");
+    function initSelectors() {
+      const monthSelect = document.getElementById("month");
+      const yearSelect = document.getElementById("year");
+      for (let m = 1; m <= 12; m++) {
+        const option = document.createElement("option");
+        option.value = m;
+        option.text = `${m}月`;
+        monthSelect.appendChild(option);
+      }
+      const thisYear = new Date().getFullYear();
+      for (let y = thisYear - 1; y <= thisYear + 2; y++) {
+        const option = document.createElement("option");
+        option.value = y;
+        option.text = `${y}年`;
+        yearSelect.appendChild(option);
+      }
+      monthSelect.value = 4;
+      yearSelect.value = 2025;
     }
-  }
 
-  function updateReservationList() {
-    const list = document.getElementById("reservationList");
-    list.innerHTML = "";
-    reservations.forEach(res => {
-      const item = document.createElement("li");
-      item.textContent = `${res.date} - ${res.name}（${res.phone}, ${res.email}）`;
-      list.appendChild(item);
-    });
-  }
-
-  function initSelectors() {
-    const monthSelect = document.getElementById("month");
-    const yearSelect = document.getElementById("year");
-    for (let m = 1; m <= 12; m++) {
-      const option = document.createElement("option");
-      option.value = m;
-      option.text = `${m}月`;
-      monthSelect.appendChild(option);
-    }
-    const thisYear = new Date().getFullYear();
-    for (let y = thisYear - 1; y <= thisYear + 2; y++) {
-      const option = document.createElement("option");
-      option.value = y;
-      option.text = `${y}年`;
-      yearSelect.appendChild(option);
-    }
-    monthSelect.value = 4;
-    yearSelect.value = 2025;
-  }
-
-  initSelectors();
-  generateCalendar(2025, 4);
-</script>
+    initSelectors();
+    generateCalendar(2025, 4);
+  </script>
 </body>
 </html>
