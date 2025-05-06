@@ -30,7 +30,7 @@
   <div id="reservationInstructions">
     <h2>予約の手順</h2>
     <ol>
-      <li>カレンダーで予約したい日付を選択してください（〇の日付）。</li>
+      <li>カレンダーで予約したい日付を選択してください（○の日付）。</li>
       <li>予約フォームにお名前、電話番号、メールアドレスを入力してください。</li>
       <li>「予約を確定する」ボタンをクリックしてください。</li>
       <li>ご入力いただいたメールまたは電話番号に確定連絡をいたします。</li>
@@ -39,7 +39,7 @@
 
   <div class="admin-toggle">
     <button onclick="toggleAdminMode()">管理モード切り替え</button>
-    <input type="password" id="adminPass" placeholder="管理パスワード（4桁）" maxlength="4">
+    <input type="password" id="adminPass" placeholder="管理パスワード（4桑）" maxlength="4">
     <span id="adminStatus">現在: 通常モード</span>
   </div>
 
@@ -62,7 +62,7 @@
     <input type="tel" id="phone" placeholder="電話番号" required>
     <input type="email" id="email" placeholder="メールアドレス" required>
     <button onclick="submitReservation()">予約を確定する</button>
-    <p class="notice">※こちらの予約は仮予約となります。予約の確定につきましては登録いただいたメールアドレスもしくは電話番号宛に連絡をいたします。</p>
+    <p class="notice">＊こちらの予約は仮予約となります。予約の確定につきましては登録いただいたメールアドレスもしくは電話番号対応に連絡をいたします。</p>
   </div>
 
   <script>
@@ -74,39 +74,31 @@
     const adminPassword = "1135";
 
     async function fetchReservations() {
-      const response = await fetch(apiUrl, { mode: "no-cors" });
-      // no-corsだとresponse.json()できないため、ここではダミーデータを設定
+      await fetch(apiUrl, { mode: "no-cors" });
       reservations = [];
       reservedDates = [];
-    }
-
-    function formatDate(date) {
-      return date.toISOString().split('T')[0];
     }
 
     async function generateCalendar(year, month) {
       await fetchReservations();
       const table = document.getElementById("calendar");
       table.innerHTML = "";
-      const date = new Date(year, month - 1, 1);
+
       const daysInMonth = new Date(year, month, 0).getDate();
 
       let row = table.insertRow();
       for (let i = 0; i < daysInMonth; i++) {
-        const currentDate = new Date(year, month - 1, i + 1);
-        const formatted = formatDate(currentDate);
+        const formatted = `${year}-${String(month).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
         const cell = row.insertCell();
 
         if (reservedDates.includes(formatted)) {
           cell.innerHTML = `${i + 1}日<br><span class="reserved">×</span>`;
-        } else {
-          cell.innerHTML = `${i + 1}日<br><span class="clickable">〇</span>`;
-        }
-
-        if (adminMode) {
-          cell.style.cursor = "pointer";
+          cell.style.color = "red";
+          cell.style.cursor = "default";
           cell.onclick = null;
-        } else if (!reservedDates.includes(formatted)) {
+        } else {
+          cell.innerHTML = `${i + 1}日<br><span class="clickable">○</span>`;
+          cell.style.cursor = "pointer";
           cell.onclick = () => {
             selectedDate = formatted;
             document.getElementById("reservationForm").style.display = "block";
@@ -157,7 +149,7 @@
         document.getElementById("adminPanel").style.display = adminMode ? "block" : "none";
         updateCalendar();
       } else {
-        alert("パスワードが間違っています。管理モードに入れません。");
+        alert("パスワードが間違っています。\n管理モードに入れません。");
       }
     }
 
