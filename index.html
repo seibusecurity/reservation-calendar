@@ -10,11 +10,11 @@
     th, td { border: 1px solid #ccc; text-align: center; padding: 10px; }
     .clickable { cursor: pointer; color: blue; }
     .form-container { display: none; margin-bottom: 20px; }
-    .form-container input { display: block; margin: 5px 0; }
+    .form-container input, .form-container textarea { display: block; margin: 5px 0; padding: 8px; width: 100%; max-width: 400px; }
     .notice { font-size: 0.9em; color: #666; margin-top: 10px; }
     @media (max-width: 600px) {
       table, th, td { font-size: 12px; padding: 5px; }
-      .form-container input, button { width: 100%; font-size: 14px; }
+      .form-container input, .form-container textarea, button { width: 100%; font-size: 14px; }
       button { padding: 8px 12px; }
     }
   </style>
@@ -32,9 +32,14 @@
   <div class="form-container" id="reservationForm">
     <h2>予約情報の入力</h2>
     <p id="selectedDateDisplay"></p>
+    <label for="startDate">開始日</label>
+    <input type="date" id="startDate" required>
+    <label for="endDate">終了日</label>
+    <input type="date" id="endDate" required>
     <input type="text" id="name" placeholder="お名前" required>
     <input type="tel" id="phone" placeholder="電話番号" required>
     <input type="email" id="email" placeholder="メールアドレス" required>
+    <textarea id="remarks" placeholder="備考"></textarea>
     <button onclick="submitReservation()">予約を確定する</button>
     <p class="notice">※この予約は仮予約です。確定のご連絡は後日メールまたはお電話でお知らせします。</p>
   </div>
@@ -62,7 +67,9 @@
         cell.onclick = () => {
           selectedDate = formatted;
           document.getElementById("reservationForm").style.display = "block";
-          document.getElementById("selectedDateDisplay").innerText = `選択した日付: ${formatted}`;
+          document.getElementById("selectedDateDisplay").innerText = `選択した起点日: ${formatted}`;
+          document.getElementById("startDate").value = formatted;
+          document.getElementById("endDate").value = formatted;
         };
         if ((i + 1) % 7 === 0) row = table.insertRow();
       }
@@ -79,8 +86,11 @@
       const name = document.getElementById("name").value.trim();
       const phone = document.getElementById("phone").value.trim();
       const email = document.getElementById("email").value.trim();
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const remarks = document.getElementById("remarks").value.trim();
 
-      if (!name || !phone || !email) {
+      if (!name || !phone || !email || !startDate || !endDate) {
         alert("すべての項目を入力してください。");
         return;
       }
@@ -88,7 +98,7 @@
       await fetch(apiUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: selectedDate, name, phone, email })
+        body: JSON.stringify({ date: `${startDate}～${endDate}`, name, phone, email, remarks })
       });
 
       alert("予約が完了しました！");
