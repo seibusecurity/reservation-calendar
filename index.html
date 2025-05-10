@@ -1,46 +1,58 @@
-
 <!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>予約フォーム</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, textarea { width: 300px; padding: 5px; }
+    button { margin-top: 10px; }
+  </style>
 </head>
 <body>
   <h1>予約フォーム</h1>
-  <form id="reservationForm">
-    <label>開始日: <input type="date" id="startDate" required></label><br>
-    <label>終了日: <input type="date" id="endDate" required></label><br>
-    <label>名前: <input type="text" id="name" required></label><br>
-    <label>電話番号: <input type="tel" id="phone" required></label><br>
-    <label>メール: <input type="email" id="email" required></label><br>
-    <label>備考: <textarea id="note"></textarea></label><br>
-    <button type="button" onclick="submitReservation()">予約を確定する</button>
-  </form>
+
+  <label>開始日: <input type="date" id="startDate"></label>
+  <label>終了日: <input type="date" id="endDate"></label>
+  <label>名前: <input type="text" id="name"></label>
+  <label>電話番号: <input type="tel" id="phone"></label>
+  <label>メール: <input type="email" id="email"></label>
+  <label>備考: <textarea id="note" rows="3"></textarea></label>
+
+  <button onclick="submitReservation()">予約を確定する</button>
 
   <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbw5qQsJGWacMm2dgRtyFaozKfFwArHE90SZ0gPaZ3xba_Q5mk0oNBknZKOn_lchCG_S/exec";
+    const apiUrl = "https://script.google.com/macros/s/AKfycbxQoAA_jwZAio0wicUtpwdg_RlZqxC7CvNE8OPdJlsVwECMKVW-HQFgXmmYxwlJabSo/exec";
 
     async function submitReservation() {
-      const data = {
-        startDate: document.getElementById("startDate").value,
-        endDate: document.getElementById("endDate").value,
-        name: document.getElementById("name").value,
-        phone: document.getElementById("phone").value,
-        email: document.getElementById("email").value,
-        note: document.getElementById("note").value
-      };
+      const startDate = document.getElementById("startDate").value;
+      const endDate = document.getElementById("endDate").value;
+      const name = document.getElementById("name").value;
+      const phone = document.getElementById("phone").value;
+      const email = document.getElementById("email").value;
+      const note = document.getElementById("note").value;
+
+      if (!startDate || !endDate || !name || !phone || !email) {
+        alert("すべての項目を入力してください");
+        return;
+      }
 
       try {
         const response = await fetch(apiUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data)
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            startDate, endDate, name, phone, email, note
+          })
         });
 
-        const text = await response.text();
-        alert("送信結果: " + text);
+        const result = await response.text();
+        alert("送信結果: " + result);
       } catch (error) {
-        alert("送信エラー: " + error);
+        alert("通信エラーが発生しました: " + error.message);
       }
     }
   </script>
