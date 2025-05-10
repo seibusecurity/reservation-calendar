@@ -2,132 +2,49 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>予約カレンダー</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; }
-    table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
-    th, td { border: 1px solid #ccc; text-align: center; padding: 10px; }
-    .clickable { cursor: pointer; color: blue; }
-    .form-container { display: none; margin-bottom: 20px; }
-    .form-container input, .form-container textarea { display: block; margin: 5px 0; padding: 8px; width: 100%; max-width: 400px; }
-    .notice { font-size: 0.9em; color: #666; margin-top: 10px; }
-    @media (max-width: 600px) {
-      table, th, td { font-size: 12px; padding: 5px; }
-      .form-container input, .form-container textarea, button { width: 100%; font-size: 14px; }
-      button { padding: 8px 12px; }
-    }
-  </style>
+  <title>予約フォーム</title>
 </head>
 <body>
-  <h1>予約カレンダー</h1>
-
-  <label for="month">月選択:</label>
-  <select id="month"></select>
-  <select id="year"></select>
-  <button onclick="updateCalendar()">表示</button>
-
-  <table id="calendar"></table>
-
-  <div class="form-container" id="reservationForm">
-    <h2>予約情報の入力</h2>
-    <p id="selectedDateDisplay"></p>
-    <label for="startDate">開始日</label>
-    <input type="date" id="startDate" required>
-    <label for="endDate">終了日</label>
-    <input type="date" id="endDate" required>
-    <input type="text" id="name" placeholder="お名前" required>
-    <input type="tel" id="phone" placeholder="電話番号" required>
-    <input type="email" id="email" placeholder="メールアドレス" required>
-    <textarea id="remarks" placeholder="備考"></textarea>
-    <button onclick="submitReservation()">予約を確定する</button>
-    <p class="notice">※この予約は仮予約です。確定のご連絡は後日メールまたはお電話でお知らせします。</p>
-  </div>
+  <h1>予約フォーム</h1>
+  <form id="reservationForm">
+    <label>開始日: <input type="date" id="startDate" required></label><br>
+    <label>終了日: <input type="date" id="endDate" required></label><br>
+    <label>名前: <input type="text" id="name" required></label><br>
+    <label>電話番号: <input type="tel" id="phone" required></label><br>
+    <label>メール: <input type="email" id="email" required></label><br>
+    <label>備考: <textarea id="note"></textarea></label><br>
+    <button type="submit">予約を確定する</button>
+  </form>
 
   <script>
-    const apiUrl = "https://script.google.com/macros/s/AKfycbwRivoMd5VOsQjilh1fs9rx0ZS5UYJvG1dpP8pyid3daBDXcBLb5mQleeJQXlM86zFV/exec";
-    let selectedDate = null;
+    document.getElementById("reservationForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
 
-    function formatDate(date) {
-      return date.toISOString().split('T')[0];
-    }
+      const payload = {
+        startDate: document.getElementById("startDate").value,
+        endDate: document.getElementById("endDate").value,
+        name: document.getElementById("name").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value,
+        note: document.getElementById("note").value
+      };
 
-    function generateCalendar(year, month) {
-      const table = document.getElementById("calendar");
-      table.innerHTML = "";
-      const date = new Date(year, month - 1, 1);
-      const daysInMonth = new Date(year, month, 0).getDate();
-      let row = table.insertRow();
+      try {
+        const response = await fetch('https://script.google.com/macros/s/AKfycbwRivoMd5VOsQjilh1fs9rx0ZS5UYJvG1dpP8pyid3daBDXcBLb5mQleeJQXlM86zFV/exec', {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload),
+          mode: "cors"
+        });
 
-      for (let i = 0; i < daysInMonth; i++) {
-        const currentDate = new Date(year, month - 1, i + 1);
-        const formatted = formatDate(currentDate);
-        const cell = row.insertCell();
-        cell.innerHTML = `${i + 1}日<br><span class="clickable">〇</span>`;
-        cell.onclick = () => {
-          selectedDate = formatted;
-          document.getElementById("reservationForm").style.display = "block";
-          document.getElementById("selectedDateDisplay").innerText = `選択した起点日: ${formatted}`;
-          document.getElementById("startDate").value = formatted;
-          document.getElementById("endDate").value = formatted;
-        };
-        if ((i + 1) % 7 === 0) row = table.insertRow();
+        const text = await response.text();
+        alert("サーバーからの応答: " + text);
+      } catch (error) {
+        alert("予約送信中にエラーが発生しました: " + error);
       }
-    }
-
-    function updateCalendar() {
-      const year = parseInt(document.getElementById("year").value);
-      const month = parseInt(document.getElementById("month").value);
-      document.getElementById("reservationForm").style.display = "none";
-      generateCalendar(year, month);
-    }
-
-    async function submitReservation() {
-      const name = document.getElementById("name").value.trim();
-      const phone = document.getElementById("phone").value.trim();
-      const email = document.getElementById("email").value.trim();
-      const startDate = document.getElementById("startDate").value;
-      const endDate = document.getElementById("endDate").value;
-      const remarks = document.getElementById("remarks").value.trim();
-
-      if (!name || !phone || !email || !startDate || !endDate) {
-        alert("すべての項目を入力してください。");
-        return;
-      }
-
-      await fetch(apiUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: `${startDate}～${endDate}`, name, phone, email, remarks })
-      });
-
-      alert("予約が完了しました！");
-      document.getElementById("reservationForm").style.display = "none";
-      updateCalendar();
-    }
-
-    function initSelectors() {
-      const monthSelect = document.getElementById("month");
-      const yearSelect = document.getElementById("year");
-      for (let m = 1; m <= 12; m++) {
-        const option = document.createElement("option");
-        option.value = m;
-        option.text = `${m}月`;
-        monthSelect.appendChild(option);
-      }
-      const thisYear = new Date().getFullYear();
-      for (let y = thisYear - 1; y <= thisYear + 2; y++) {
-        const option = document.createElement("option");
-        option.value = y;
-        option.text = `${y}年`;
-        yearSelect.appendChild(option);
-      }
-      monthSelect.value = new Date().getMonth() + 1;
-      yearSelect.value = new Date().getFullYear();
-    }
-
-    initSelectors();
-    generateCalendar(new Date().getFullYear(), new Date().getMonth() + 1);
+    });
   </script>
 </body>
 </html>
